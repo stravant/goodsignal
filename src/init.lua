@@ -39,11 +39,10 @@ local function acquireRunnerThreadAndCallEventHandler(fn, ...)
 	freeRunnerThread = acquiredRunnerThread
 end
 
--- Coroutine runner that we create coroutines of. The coroutine can be 
+-- Coroutine runner that we create coroutines of. The coroutine can be
 -- repeatedly resumed with functions to run followed by the argument to run
 -- them with.
-local function runEventHandlerInFreeThread(...)
-	acquireRunnerThreadAndCallEventHandler(...)
+local function runEventHandlerInFreeThread()
 	while true do
 		acquireRunnerThreadAndCallEventHandler(coroutine.yield())
 	end
@@ -63,7 +62,7 @@ function Connection.new(signal, fn)
 end
 
 function Connection:Disconnect()
-	assert(self._connected, "Can't disconnect a connection twice.", 2)
+	assert(self._connected, "Can't disconnect a connection twice.")
 	self._connected = false
 
 	-- Unhook the node, but DON'T clear it. That way any fire calls that are
@@ -99,7 +98,7 @@ Signal.__index = Signal
 
 function Signal.new()
 	return setmetatable({
-		_handlerListHead = false,	
+		_handlerListHead = false,
 	}, Signal)
 end
 
@@ -130,6 +129,7 @@ function Signal:Fire(...)
 		if item._connected then
 			if not freeRunnerThread then
 				freeRunnerThread = coroutine.create(runEventHandlerInFreeThread)
+				task.spawn(freeRunnerThread)
 			end
 			task.spawn(freeRunnerThread, item._fn, ...)
 		end

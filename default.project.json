@@ -1,6 +1,14 @@
 {
 	"name": "goodsignal",
 	"tree": {
-		"$path": "src"
+		"$className": "DataModel",
+
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+
+			"GoodSignal": {
+				"$path": "src"
+			}
+		}
 	}
 }
