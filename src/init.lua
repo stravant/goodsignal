@@ -114,6 +114,15 @@ function Signal:Connect(fn)
 	return connection
 end
 
+function Signal:Once(fn)
+	local listener; listener = self:Connect(function(...)
+		-- Disconnect before calling the function to ensure the callback is only invoked once
+		listener:Disconnect()
+		fn(...)
+	end)
+	return listener
+end
+
 -- Disconnect all handlers. Since we use a linked list it suffices to clear the
 -- reference to the head handler.
 function Signal:DisconnectAll()
