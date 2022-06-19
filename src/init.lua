@@ -63,7 +63,6 @@ function Connection.new(signal, fn)
 end
 
 function Connection:Disconnect()
-	assert(self._connected, "Can't disconnect a connection twice.", 2)
 	self._connected = false
 
 	-- Unhook the node, but DON'T clear it. That way any fire calls that are
@@ -99,7 +98,7 @@ Signal.__index = Signal
 
 function Signal.new()
 	return setmetatable({
-		_handlerListHead = false,	
+		_handlerListHead = false,
 	}, Signal)
 end
 
@@ -147,6 +146,19 @@ function Signal:Wait()
 		task.spawn(waitingCoroutine, ...)
 	end)
 	return coroutine.yield()
+end
+
+-- Implement Signal:Once() in terms of a connection which disconnects
+-- itself before running the handler.
+function Signal:Once(fn)
+	local cn;
+	cn = self:Connect(function(...)
+		if cn._connected then
+			cn:Disconnect()
+		end
+		fn(...)
+	end)
+	return cn
 end
 
 -- Make signal strict
