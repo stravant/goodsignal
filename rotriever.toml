@@ -4,7 +4,6 @@ version = "0.2.2"
 license = "MIT"
 authors = [ "Mark Langen <stravant@gmail.com>" ]
 content_root = "src"
-files = [ "src/**", "default.project.json" ]
 
 [dependencies]
 # None :)
