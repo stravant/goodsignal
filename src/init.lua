@@ -167,6 +167,18 @@ function Signal:Once(fn)
 	return cn
 end
 
+-- Implement Signal:ConnectParallel() in terms of a provided function
+-- which is ran in parallel automatically.
+function Signal:ConnectParallel(func: (...any) -> ())
+	local cn;
+	cn = self:Connect(function(...)
+		task.desynchronize()
+		func(...)
+	end)
+	return cn
+end
+
+
 -- Make signal strict
 setmetatable(Signal, {
 	__index = function(tb, key)
