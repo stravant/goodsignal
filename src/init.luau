@@ -23,15 +23,65 @@
 --   stravant - July 31st, 2021 - Created the file.                           --
 --------------------------------------------------------------------------------
 
+--!strict
+
+-- Typing
+
+--- Connection
+
+type ConnectionImpl<Variant... = ...any> = {
+	__index: ConnectionImpl<Variant...>,
+
+	new: (signal: Signal<Variant...>, fn: (Variant...) -> ()) -> Connection<Variant...>,
+
+	Disconnect: (self: Connection<Variant...>) -> (),
+}
+
+type ConnectionProto<Variant... = ...any> = {
+	_connected: boolean,
+	_signal: Signal<Variant...>,
+	_fn: (Variant...) -> (),
+	_next: false | Connection<Variant...>,
+}
+
+export type Connection<Variant... = ...any> = typeof(setmetatable(
+	{} :: ConnectionProto<Variant...>,
+	{} :: ConnectionImpl<Variant...>
+))
+
+--- Signal
+
+type SignalImpl<Variant... = ...any> = {
+	__index: SignalImpl<Variant...>,
+
+	new: () -> Signal<Variant...>,
+
+	Connect: (self: Signal<Variant...>, func: (Variant...) -> ()) -> Connection<Variant...>,
+	DisconnectAll: (self: Signal<Variant...>) -> (),
+
+	Fire: (self: Signal<Variant...>, Variant...) -> (),
+	Wait: (self: Signal<Variant...>) -> Variant...,
+	Once: (self: Signal<Variant...>, func: (Variant...) -> ()) -> Connection<Variant...>,
+}
+
+type SignalProto<Variant... = ...any> = {
+	_handlerListHead: false | Connection<Variant...>,
+}
+
+export type Signal<Variant... = ...any> = typeof(setmetatable(
+	{} :: SignalProto<Variant...>,
+	{} :: SignalImpl<Variant...>
+))
+
 -- The currently idle thread to run the next handler on
-local freeRunnerThread = nil
+local freeRunnerThread: thread? = nil
 
 -- Function which acquires the currently idle handler runner thread, runs the
 -- function fn on it, and then releases the thread, returning it to being the
 -- currently idle one.
 -- If there was a currently idle runner thread already, that's okay, that old
 -- one will just get thrown and eventually GCed.
-local function acquireRunnerThreadAndCallEventHandler(fn, ...)
+local function acquireRunnerThreadAndCallEventHandler<T...>(fn: (T...) -> (), ...: T...)
 	local acquiredRunnerThread = freeRunnerThread
 	freeRunnerThread = nil
 	fn(...)
@@ -39,7 +89,7 @@ local function acquireRunnerThreadAndCallEventHandler(fn, ...)
 	freeRunnerThread = acquiredRunnerThread
 end
 
--- Coroutine runner that we create coroutines of. The coroutine can be 
+-- Coroutine runner that we create coroutines of. The coroutine can be
 -- repeatedly resumed with functions to run followed by the argument to run
 -- them with.
 local function runEventHandlerInFreeThread()
@@ -54,19 +104,22 @@ local function runEventHandlerInFreeThread()
 end
 
 -- Connection class
-local Connection = {}
+local Connection = {} :: ConnectionImpl
 Connection.__index = Connection
 
-function Connection.new(signal, fn)
-	return setmetatable({
-		_connected = true,
-		_signal = signal,
-		_fn = fn,
-		_next = false,
-	}, Connection)
+function Connection.new<T...>(signal: Signal<T...>, fn: (T...) -> ()): Connection<T...>
+	return setmetatable(
+		{
+			_connected = true,
+			_signal = signal,
+			_fn = fn,
+			_next = false,
+		} :: ConnectionProto,
+		Connection
+	)
 end
 
-function Connection:Disconnect()
+function Connection.Disconnect<T...>(self: Connection<T...>): ()
 	self._connected = false
 
 	-- Unhook the node, but DON'T clear it. That way any fire calls that are
@@ -76,9 +129,9 @@ function Connection:Disconnect()
 	if self._signal._handlerListHead == self then
 		self._signal._handlerListHead = self._next
 	else
-		local prev = self._signal._handlerListHead
+		local prev = self._signal._handlerListHead :: Connection<T...>
 		while prev and prev._next ~= self do
-			prev = prev._next
+			prev = prev._next :: Connection<T...>
 		end
 		if prev then
 			prev._next = self._next
@@ -88,25 +141,28 @@ end
 
 -- Make Connection strict
 setmetatable(Connection, {
-	__index = function(tb, key)
+	__index = function(_, key)
 		error(("Attempt to get Connection::%s (not a valid member)"):format(tostring(key)), 2)
 	end,
-	__newindex = function(tb, key, value)
+	__newindex = function(_, key, _)
 		error(("Attempt to set Connection::%s (not a valid member)"):format(tostring(key)), 2)
-	end
+	end,
 })
 
 -- Signal class
-local Signal = {}
+local Signal = {} :: SignalImpl
 Signal.__index = Signal
 
-function Signal.new()
-	return setmetatable({
-		_handlerListHead = false,
-	}, Signal)
+function Signal.new<T...>(): Signal<T...>
+	return setmetatable(
+		{
+			_handlerListHead = false,
+		} :: SignalProto,
+		Signal
+	)
 end
 
-function Signal:Connect(fn)
+function Signal.Connect<T...>(self: Signal<T...>, fn: (T...) -> ()): Connection<T...>
 	local connection = Connection.new(self, fn)
 	if self._handlerListHead then
 		connection._next = self._handlerListHead
@@ -119,7 +175,7 @@ end
 
 -- Disconnect all handlers. Since we use a linked list it suffices to clear the
 -- reference to the head handler.
-function Signal:DisconnectAll()
+function Signal.DisconnectAll<T...>(self: Signal<T...>): ()
 	self._handlerListHead = false
 end
 
@@ -127,26 +183,26 @@ end
 -- coRunnerThread, and any time the resulting thread yielded without returning
 -- to us, that means that it yielded to the Roblox scheduler and has been taken
 -- over by Roblox scheduling, meaning we have to make a new coroutine runner.
-function Signal:Fire(...)
-	local item = self._handlerListHead
+function Signal.Fire<T...>(self: Signal<T...>, ...: T...): ()
+	local item = self._handlerListHead :: Connection<T...>
 	while item do
 		if item._connected then
 			if not freeRunnerThread then
 				freeRunnerThread = coroutine.create(runEventHandlerInFreeThread)
 				-- Get the freeRunnerThread to the first yield
-				coroutine.resume(freeRunnerThread)
+				coroutine.resume((freeRunnerThread :: any) :: thread)
 			end
-			task.spawn(freeRunnerThread, item._fn, ...)
+			task.spawn((freeRunnerThread :: any) :: thread, item._fn, ...)
 		end
-		item = item._next
+		item = item._next :: Connection<T...>
 	end
 end
 
 -- Implement Signal:Wait() in terms of a temporary connection using
 -- a Signal:Connect() which disconnects itself.
-function Signal:Wait()
+function Signal.Wait<T...>(self: Signal<T...>): T...
 	local waitingCoroutine = coroutine.running()
-	local cn;
+	local cn
 	cn = self:Connect(function(...)
 		cn:Disconnect()
 		task.spawn(waitingCoroutine, ...)
@@ -156,8 +212,8 @@ end
 
 -- Implement Signal:Once() in terms of a connection which disconnects
 -- itself before running the handler.
-function Signal:Once(fn)
-	local cn;
+function Signal.Once<T...>(self: Signal<T...>, fn: (T...) -> ()): Connection<T...>
+	local cn
 	cn = self:Connect(function(...)
 		if cn._connected then
 			cn:Disconnect()
@@ -169,12 +225,12 @@ end
 
 -- Make signal strict
 setmetatable(Signal, {
-	__index = function(tb, key)
+	__index = function(_, key)
 		error(("Attempt to get Signal::%s (not a valid member)"):format(tostring(key)), 2)
 	end,
-	__newindex = function(tb, key, value)
+	__newindex = function(_, key, _)
 		error(("Attempt to set Signal::%s (not a valid member)"):format(tostring(key)), 2)
-	end
+	end,
 })
 
 return Signal
