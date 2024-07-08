@@ -1,5 +1,28 @@
+--------------------------------------------------------------------------------
+--               Batched Yield-Safe Signal Implementation                     --
+-- This is a Signal class which has effectively identical behavior to a       --
+-- normal RBXScriptSignal, with the only difference being a couple extra      --
+-- stack frames at the bottom of the stack trace when an error is thrown.     --
+-- This implementation caches runner coroutines, so the ability to yield in   --
+-- the signal handlers comes at minimal extra cost over a naive signal        --
+-- implementation that either always or never spawns a thread.                --
+--                                                                            --
+-- API:                                                                       --
+--   local Signal = require(THIS MODULE)                                      --
+--   local sig = Signal.new()                                                 --
+--   local connection = sig:Connect(function(arg1, arg2, ...) ... end)        --
+--   sig:Fire(arg1, arg2, ...)                                                --
+--   connection:Disconnect()                                                  --
+--   sig:DisconnectAll()                                                      --
+--   local arg1, arg2, ... = sig:Wait()                                       --
+--                                                                            --
+-- Licence:                                                                   --
+--   Licenced under the MIT licence.                                          --
+--                                                                            --
+-- Authors:                                                                   --
+--   stravant - July 31st, 2021 - Created the file.                           --
+--------------------------------------------------------------------------------
 --!nocheck
--- A modified stravant's goodsignal to support types.
 
 -- The currently idle thread to run the next handler on
 local freeRunnerThread = nil
