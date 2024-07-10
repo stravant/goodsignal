@@ -1,6 +1,6 @@
 [package]
 name = "GoodSignal"
-version = "0.2.2"
+version = "0.3.0"
 license = "MIT"
 authors = [ "Mark Langen <stravant@gmail.com>" ]
 content_root = "src"
