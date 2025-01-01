@@ -106,6 +106,7 @@ export type Signal<T...> = {
 	Once: (self: Signal<T...>, callback: (T...) -> ()) -> Connection,
 	Fire: (self: Signal<T...>, T...) -> (),
 	Wait: (self: Signal<T...>) -> (),
+	DisconnectAll: (self: Signal<T...>) -> (),
 }
 
 -- Signal class
