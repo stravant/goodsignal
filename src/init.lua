@@ -161,7 +161,9 @@ function Signal:Wait()
 	local cn
 	cn = self:Connect(function(...)
 		cn:Disconnect()
-		task.spawn(waitingCoroutine, ...)
+		if coroutine.status(waitingCoroutine) == "suspended" then
+			task.spawn(waitingCoroutine, ...)
+		end
 	end)
 	return coroutine.yield()
 end
