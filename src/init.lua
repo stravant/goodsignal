@@ -21,6 +21,8 @@
 --                                                                            --
 -- Authors:                                                                   --
 --   stravant - July 31st, 2021 - Created the file.                           --
+--   coffilhg - May 2nd, 2026 - Published perfected version on wally.         --
+--   			(with the help of Crusherfire)							      --
 --------------------------------------------------------------------------------
 --!nocheck
 
@@ -106,6 +108,7 @@ export type Signal<T...> = {
 	Once: (self: Signal<T...>, callback: (T...) -> ()) -> Connection,
 	Fire: (self: Signal<T...>, T...) -> (),
 	Wait: (self: Signal<T...>) -> T...,
+	DisconnectAll: (self: Signal<T...>) -> (),
 }
 
 -- Signal class
@@ -161,7 +164,9 @@ function Signal:Wait()
 	local cn
 	cn = self:Connect(function(...)
 		cn:Disconnect()
-		task.spawn(waitingCoroutine, ...)
+		if coroutine.status(waitingCoroutine) == "suspended" then
+			task.spawn(waitingCoroutine, ...)
+		end
 	end)
 	return coroutine.yield()
 end
@@ -179,8 +184,11 @@ function Signal:Once(fn)
 	return cn
 end
 
--- Make signal strict
+-- Make signal strict & __call available
 setmetatable(Signal, {
+	__call = function<T...>(): Signal<T...>
+		return Signal.new()
+	end,
 	__index = function(_, key)
 		error(("Attempt to get Signal::%s (not a valid member)"):format(tostring(key)), 2)
 	end,

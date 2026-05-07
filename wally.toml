@@ -1,9 +1,10 @@
 [package]
-name = "stravant/goodsignal"
-description = "A fast Signal class implementation that has full feature parity with Roblox' RBXScriptSignal"
-version = "0.3.1"
+name = "coffilhg/perfectsignal"
+description = "A fast Signal class implementation that has full feature parity with Roblox' RBXScriptSignal. GoodSignal, but fixed to perfection."
+version = "1.0.1"
 license = "MIT"
-authors = ["Mark Langen <stravant@gmail.com>"]
+authors = ["Mark Langen <stravant@gmail.com>", "Coffilhg <coffilhg@gmail.com>"]
+repository = "https://github.com/Coffilhg/PerfectSignal"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 

@@ -1,8 +1,8 @@
 [package]
-name = "GoodSignal"
-version = "0.3.1"
+name = "PerfectSignal"
+version = "1.0.1"
 license = "MIT"
-authors = [ "Mark Langen <stravant@gmail.com>" ]
+authors = [ "Mark Langen <stravant@gmail.com>", "Coffilhg <coffilhg@gmail.com>" ]
 content_root = "src"
 
 [dependencies]
